@@ -1,18 +1,36 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { SpellCheckRequest, SpellCheckResponse, Profile } from '../types/api';
 import { spellCheckerWASM } from '../wasm/spellchecker';
+import { BUILD_MODE, IS_WASM_MODE, IS_API_MODE, getEffectiveMode } from '../config/mode';
+
+// Re-export mode constants for components to use
+export { BUILD_MODE, IS_WASM_MODE, IS_API_MODE };
 
 // Mode detection - can be 'wasm', 'api', or 'auto'
-const MODE = import.meta.env.VITE_SPELLCHECKER_MODE || 'auto';
+const MODE = BUILD_MODE;
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+/**
+ * Normalize spell check response to ensure all arrays are present
+ * Go WASM returns nil slices as null in JSON, but TypeScript expects arrays
+ */
+function normalizeResponse(response: SpellCheckResponse): SpellCheckResponse {
+  return {
+    ...response,
+    misspellings: response.misspellings || [],
+    repeated_words: response.repeated_words || [],
+    capitalisation_issues: response.capitalisation_issues || [],
+  };
+}
 
 export function useSpellCheck() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wasmReady, setWasmReady] = useState(false);
   const [wasmLoading, setWasmLoading] = useState(false);
+  const [wasmError, setWasmError] = useState<string | null>(null);
 
-  // Initialize WASM on mount if in WASM mode
+  // Initialize WASM on mount if in WASM mode or auto mode
   useEffect(() => {
     if (MODE === 'wasm' || MODE === 'auto') {
       initializeWASM();
@@ -23,13 +41,17 @@ export function useSpellCheck() {
     if (wasmLoading || wasmReady) return;
     
     setWasmLoading(true);
+    setWasmError(null);
+    
     try {
-      await spellCheckerWASM.initialize('./spellchecker.wasm');
+      // Pass undefined to use automatic path detection
+      await spellCheckerWASM.initialize(undefined, 3);
       setWasmReady(true);
       console.log('WASM spell checker ready');
     } catch (err) {
-      console.warn('WASM initialization failed, falling back to API:', err);
+      console.warn('WASM initialization failed after retries:', err);
       setWasmReady(false);
+      setWasmError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setWasmLoading(false);
     }
@@ -44,11 +66,15 @@ export function useSpellCheck() {
     try {
       // Try WASM first if available
       if ((MODE === 'wasm' || MODE === 'auto') && wasmReady) {
+        // Use setTimeout to yield to the UI thread so loading state is shown
+        await new Promise(resolve => setTimeout(resolve, 0));
         const result = spellCheckerWASM.checkText(
           request.text || '', 
           request.profile_id || 'default'
         );
-        return result as SpellCheckResponse;
+        // Normalize response to ensure arrays are never null
+        const normalizedResult = normalizeResponse(result as SpellCheckResponse);
+        return normalizedResult;
       }
 
       // Fall back to API
@@ -65,7 +91,7 @@ export function useSpellCheck() {
         }
 
         const data: SpellCheckResponse = await response.json();
-        return data;
+        return normalizeResponse(data);
       }
 
       throw new Error('No spell checking backend available');
@@ -78,22 +104,38 @@ export function useSpellCheck() {
     }
   }, [wasmReady]);
 
+  const effectiveMode = getEffectiveMode(wasmReady);
+
   return { 
     checkText, 
     isLoading, 
     error,
     wasmReady,
     wasmLoading,
-    mode: wasmReady ? 'wasm' : 'api'
+    wasmError,
+    mode: effectiveMode,
+    retryWASM: initializeWASM,
   };
 }
 
+/**
+ * Hook for profile management
+ * In WASM mode, all functions return errors immediately since profiles require a backend
+ */
 export function useProfiles() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Profiles are always fetched from API (not supported in WASM yet)
+  // Profiles are only supported in API mode
+  const profilesSupported = IS_API_MODE;
+
   const fetchProfiles = useCallback(async (): Promise<Profile[]> => {
+    // In WASM mode, profiles are not supported
+    if (IS_WASM_MODE) {
+      console.log('Profiles not supported in WASM mode');
+      return [];
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -117,6 +159,12 @@ export function useProfiles() {
   const createProfile = useCallback(async (
     profile: Profile
   ): Promise<boolean> => {
+    // In WASM mode, profiles are not supported
+    if (IS_WASM_MODE) {
+      setError('Creating profiles is disabled in headless (WASM) mode');
+      return false;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -148,6 +196,12 @@ export function useProfiles() {
   const updateProfile = useCallback(async (
     profile: Profile
   ): Promise<boolean> => {
+    // In WASM mode, profiles are not supported
+    if (IS_WASM_MODE) {
+      setError('Updating profiles is disabled in headless (WASM) mode');
+      return false;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -179,6 +233,12 @@ export function useProfiles() {
   const deleteProfile = useCallback(async (
     profileId: string
   ): Promise<boolean> => {
+    // In WASM mode, profiles are not supported
+    if (IS_WASM_MODE) {
+      setError('Deleting profiles is disabled in headless (WASM) mode');
+      return false;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -204,6 +264,12 @@ export function useProfiles() {
     profileId: string,
     term: string
   ): Promise<boolean> => {
+    // In WASM mode, profiles are not supported
+    if (IS_WASM_MODE) {
+      setError('Adding terms to profiles is disabled in headless (WASM) mode');
+      return false;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -231,6 +297,12 @@ export function useProfiles() {
     profileId: string,
     term: string
   ): Promise<boolean> => {
+    // In WASM mode, profiles are not supported
+    if (IS_WASM_MODE) {
+      setError('Removing terms from profiles is disabled in headless (WASM) mode');
+      return false;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -262,5 +334,6 @@ export function useProfiles() {
     removeTermFromProfile,
     isLoading,
     error,
+    profilesSupported,
   };
 }

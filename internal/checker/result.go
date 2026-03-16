@@ -6,6 +6,7 @@ type Misspelling struct {
 	Offset      int          `json:"offset"`
 	Line        int          `json:"line"`
 	Column      int          `json:"column"`
+	Type        string       `json:"type,omitempty"` // Can be "misspelling" or "missing_space"
 	Suggestions []Suggestion `json:"suggestions"`
 }
 
@@ -20,10 +21,11 @@ type RepeatedWord struct {
 // CapitalisationIssue represents a lowercase word that follows sentence-ending
 // punctuation, indicating a potential capitalisation error.
 type CapitalisationIssue struct {
-	Word   string `json:"word"`
-	Offset int    `json:"offset"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
+	Word       string `json:"word"`
+	Offset     int    `json:"offset"`
+	Line       int    `json:"line"`
+	Column     int    `json:"column"`
+	Suggestion string `json:"suggestion,omitempty"` // The corrected form
 }
 
 // Suggestion is a candidate correction for a misspelling.

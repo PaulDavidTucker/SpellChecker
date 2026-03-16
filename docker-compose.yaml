@@ -30,6 +30,7 @@ services:
       - "3000:3000"
     environment:
       - VITE_API_URL=http://localhost:8080
+      - VITE_SPELLCHECKER_MODE=api
     depends_on:
       - spellchecker
     volumes:

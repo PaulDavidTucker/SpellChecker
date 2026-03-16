@@ -70,14 +70,30 @@ func (c *Checker) Check(req CheckRequest) CheckResult {
 				// Check if this is a domain-like pattern (e.g., .com) or allowlisted
 				if !c.shouldIgnoreCapitalisation(tok, ignoreSet) {
 					capitalisationIssues = append(capitalisationIssues, CapitalisationIssue{
-						Word:   tok.Text,
-						Offset: tok.Offset,
-						Line:   tok.Line,
-						Column: tok.Column,
+						Word:       tok.Text,
+						Offset:     tok.Offset,
+						Line:       tok.Line,
+						Column:     tok.Column,
+						Suggestion: capitalizeFirst(tok.Text),
 					})
 				}
 			}
 			sentenceJustEnded = false
+		}
+
+		// Check for random capital letters in the middle of words (e.g., "camelCase", "teSt")
+		if isCheckable(tok) && tok.Kind != tokenizer.TokenHyphenated {
+			if hasRandomCapitalLetters(tok.Text) {
+				// Suggest the all-lowercase version
+				suggestion := strings.ToLower(tok.Text)
+				capitalisationIssues = append(capitalisationIssues, CapitalisationIssue{
+					Word:       tok.Text,
+					Offset:     tok.Offset,
+					Line:       tok.Line,
+					Column:     tok.Column,
+					Suggestion: suggestion,
+				})
+			}
 		}
 
 		// Check for repeated words - compare with previous checkable token
@@ -160,6 +176,27 @@ func (c *Checker) Check(req CheckRequest) CheckResult {
 
 		// Distance 0 = exact match = word is correct
 		if len(suggestions) > 0 && suggestions[0].Distance == 0 {
+			continue
+		}
+
+		// Check if this could be two words missing a space
+		// Try splitting the word at each position and check if both parts are valid
+		if splitSuggestion := c.trySplitWord(lookupWord, sentenceJustEnded); splitSuggestion != "" {
+			// This is a missing space issue
+			ms := Misspelling{
+				Word:   tok.Text,
+				Offset: tok.Offset,
+				Line:   tok.Line,
+				Column: tok.Column,
+				Type:   "missing_space",
+				Suggestions: []Suggestion{
+					{
+						Word:         splitSuggestion,
+						EditDistance: 0,
+					},
+				},
+			}
+			misspellings = append(misspellings, ms)
 			continue
 		}
 
@@ -327,6 +364,36 @@ func isLowercaseWord(word string) bool {
 	return false
 }
 
+// hasRandomCapitalLetters checks if a word has capital letters in the middle
+// (e.g., "camelCase", "PascalCase", "teSt")
+// Returns false for all-caps words like "NASA", "BBC"
+func hasRandomCapitalLetters(word string) bool {
+	if len(word) <= 1 {
+		return false
+	}
+
+	// Check for all-caps words
+	allCaps := true
+	for _, r := range word {
+		if unicode.IsLetter(r) && !unicode.IsUpper(r) {
+			allCaps = false
+			break
+		}
+	}
+	if allCaps {
+		return false
+	}
+
+	// Check for capitals after the first character
+	for i, r := range word {
+		if i > 0 && unicode.IsUpper(r) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // shouldIgnoreCapitalisation checks if a word should be ignored for
 // capitalisation checking. This includes:
 // - Words in the ignore set
@@ -344,4 +411,56 @@ func (c *Checker) shouldIgnoreCapitalisation(tok tokenizer.Token, ignoreSet map[
 	}
 
 	return false
+}
+
+// trySplitWord attempts to split a word into two valid words (missing space detection)
+// Returns the split suggestion with a space if valid, otherwise empty string
+// If atSentenceStart is true, capitalizes the first word in the suggestion
+// Examples: "helloworld" → "hello world", "spellingmistake" → "spelling mistake"
+func (c *Checker) trySplitWord(word string, atSentenceStart bool) string {
+	// Need at least 3 characters to split into two words (1+2 or 2+1 minimum)
+	if len(word) < 3 {
+		return ""
+	}
+
+	// Try splitting at every possible position
+	for i := 2; i < len(word)-2; i++ {
+		first := word[:i]
+		second := word[i:]
+
+		// Check if both parts are valid words using symspell
+		firstValid := c.isValidWord(first)
+		secondValid := c.isValidWord(second)
+
+		if firstValid && secondValid {
+			// If at sentence start, capitalize the first word
+			if atSentenceStart {
+				first = capitalizeFirst(first)
+			}
+			// Return the split version with a space
+			return first + " " + second
+		}
+	}
+
+	return ""
+}
+
+// isValidWord checks if a word exists in the dictionary using symspell
+func (c *Checker) isValidWord(word string) bool {
+	suggestions, err := c.ss.Lookup(word, verbosity.All, 0)
+	if err != nil {
+		return false
+	}
+	// If first suggestion is exact match (distance 0), word is valid
+	return len(suggestions) > 0 && suggestions[0].Distance == 0
+}
+
+// capitalizeFirst capitalizes the first letter of a word
+func capitalizeFirst(word string) string {
+	if word == "" {
+		return word
+	}
+	runes := []rune(word)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
 }
