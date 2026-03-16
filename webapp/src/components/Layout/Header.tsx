@@ -1,4 +1,5 @@
 import { useAppStore } from '../../stores/appStore';
+import { useSpellCheck } from '../../hooks/useSpellCheck';
 import { ProfileManager } from '../ProfileManager/ProfileManager';
 import { Button } from '../ui';
 import { Settings, Undo2 } from 'lucide-react';
@@ -10,7 +11,10 @@ export function Header() {
     setText,
     setCheckResult,
     setIsProfileModalOpen,
+    currentProfileId,
   } = useAppStore();
+
+  const { mode } = useSpellCheck();
 
   const handleUndo = () => {
     const entry = popUndo();
@@ -31,7 +35,22 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
-          <ProfileManager />
+          {mode === 'api' ? (
+            // API Mode: Full profile management
+            <ProfileManager />
+          ) : (
+            // WASM Mode: Simple dropdown with just default
+            <div className="flex items-center gap-2">
+              <select
+                value={currentProfileId}
+                disabled
+                className="block w-32 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-600 cursor-not-allowed"
+              >
+                <option value="default">default</option>
+              </select>
+              <span className="text-xs text-gray-400">(WASM mode)</span>
+            </div>
+          )}
 
           {undoStack.length > 0 && (
             <Button
@@ -45,14 +64,16 @@ export function Header() {
             </Button>
           )}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsProfileModalOpen(true)}
-          >
-            <Settings className="w-4 h-4 mr-1" />
-            Profiles
-          </Button>
+          {mode === 'api' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsProfileModalOpen(true)}
+            >
+              <Settings className="w-4 h-4 mr-1" />
+              Profiles
+            </Button>
+          )}
         </div>
       </div>
     </header>

@@ -4,9 +4,11 @@ import { TextEditor } from '../Editor/TextEditor';
 import { IssuesPanel } from '../IssuesPanel/IssuesSidebar';
 import { ProfileManager } from '../ProfileManager/ProfileManager';
 import { useAppStore } from '../../stores/appStore';
+import { useSpellCheck } from '../../hooks/useSpellCheck';
 
 export function MainLayout() {
-  const { showSidebar } = useAppStore();
+  const { showSidebar, isProfileModalOpen } = useAppStore();
+  const { mode } = useSpellCheck();
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -26,8 +28,8 @@ export function MainLayout() {
         {showSidebar && <IssuesPanel />}
       </div>
 
-      {/* Profile modal overlay */}
-      <ProfileManager />
+      {/* Profile modal overlay - only show in API mode */}
+      {mode === 'api' && isProfileModalOpen && <ProfileManager />}
     </div>
   );
 }
