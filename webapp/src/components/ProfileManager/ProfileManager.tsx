@@ -22,21 +22,27 @@ export function ProfileManager() {
     addTermToProfile,
     removeTermFromProfile,
     isLoading,
+    error,
   } = useProfiles();
 
   const [expandedProfile, setExpandedProfile] = useState<string | null>(null);
   const [newProfileId, setNewProfileId] = useState('');
   const [newTerm, setNewTerm] = useState('');
   const [activeProfileForTerm, setActiveProfileForTerm] = useState<string | null>(null);
+  const [backendAvailable, setBackendAvailable] = useState(true);
 
   // Load profiles on mount
   useEffect(() => {
     const loadProfiles = async () => {
       const loaded = await fetchProfiles();
+      if (loaded.length === 0 && error) {
+        // Likely backend not available (WASM mode)
+        setBackendAvailable(false);
+      }
       setProfiles(loaded);
     };
     loadProfiles();
-  }, [fetchProfiles, setProfiles]);
+  }, [fetchProfiles, setProfiles, error]);
 
   const handleCreateProfile = useCallback(async () => {
     if (!newProfileId.trim()) return;
@@ -128,8 +134,17 @@ export function ProfileManager() {
         </div>
 
         <div className="p-6 overflow-auto flex-1 space-y-6">
+          {!backendAvailable && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-yellow-800">
+                <strong>Backend not available.</strong> Profile management requires the API server. 
+                You're currently running in WASM-only mode (no backend). Only the default profile is available.
+              </p>
+            </div>
+          )}
+          
           {/* Create new profile */}
-          <div>
+          <div className={!backendAvailable ? 'opacity-50 pointer-events-none' : ''}>
             <h3 className="text-sm font-medium text-gray-700 mb-3">Create New Profile</h3>
             <div className="flex gap-3">
               <Input
@@ -140,7 +155,7 @@ export function ProfileManager() {
               />
               <Button
                 onClick={handleCreateProfile}
-                disabled={isLoading || !newProfileId.trim()}
+                disabled={isLoading || !newProfileId.trim() || !backendAvailable}
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Create

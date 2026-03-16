@@ -52,7 +52,7 @@ class SpellCheckerWASM {
   /**
    * Initialize the WASM spell checker
    */
-  async initialize(wasmPath: string = '/spellchecker.wasm'): Promise<void> {
+  async initialize(wasmPath: string = './spellchecker.wasm'): Promise<void> {
     if (this.loadPromise) {
       return this.loadPromise;
     }
