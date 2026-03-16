@@ -2,7 +2,7 @@
 
 <img src="files/SpellCheckLogo.jpg" width="1000" height="500">
 
-A containerised spell checker for short form text, written in Go.
+A containerised spell checker for short form text, written in Go. Deployed to pages.
 
 ## Features
 
@@ -43,10 +43,12 @@ docker-compose down
 ```
 
 **Note on Port Conflicts:** The services use ports 8080 (backend) and 3000 (frontend). If these ports are already in use, the `./start.sh` script will warn you. You can either:
+
 1. Stop the conflicting services
 2. Or modify the port mappings in `docker-compose.yaml`
 
 **Services:**
+
 - Backend API: http://localhost:8080
 - Web UI: http://localhost:3000
 
