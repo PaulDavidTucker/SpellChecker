@@ -1,31 +1,30 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // Base path for GitHub Pages - must match repository name
-  base: '/SpellChecker/',
+  base: "/SpellChecker/",
   server: {
     port: 3000,
-    host: '0.0.0.0',
+    host: "0.0.0.0",
     proxy: {
-      '/check': {
-        target: 'http://spellchecker:8080',
+      "/check": {
+        target: "http://spellchecker:8080",
         changeOrigin: true,
       },
-      '/profiles': {
-        target: 'http://spellchecker:8080',
+      "/profiles": {
+        target: "http://spellchecker:8080",
         changeOrigin: true,
       },
-      '/health': {
-        target: 'http://spellchecker:8080',
+      "/health": {
+        target: "http://spellchecker:8080",
         changeOrigin: true,
       },
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: "dist",
     sourcemap: true,
   },
-})
+});
