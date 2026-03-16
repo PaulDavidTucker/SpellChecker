@@ -269,10 +269,6 @@ Automatically catches words that appear twice in a row:
 }
 ```
 
-## License
-
-MIT License - See LICENSE file for details
-
 ## Contributing
 
 See [Developer Guide](docs/DEVELOPER.md) for contribution guidelines.
