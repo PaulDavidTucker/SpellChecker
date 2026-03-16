@@ -55,13 +55,15 @@ High value, low effort:
 
 - ✅ Repeated word detection — "the the" is trivial to catch during the token iteration loop. Compare each word token to the previous one. Cheap and catches a very common typo.
 
-- Capitalisation after full stops — if a word follows . and is lowercase, flag it. Not spelling per se, but cheap to check and useful for editorial content.
+- ✅ Capitalisation after full stops — if a word follows . and is lowercase, flag it. Not spelling per se, but cheap to check and useful for editorial content. Ignores terms in allowlist/ignore_terms.
 
 - Metrics endpoint — expose GET /metrics with Prometheus-compatible counters: requests served, average latency, cache hit rate. Useful for monitoring in a docker-compose setup.
 
 Medium value, medium effort:
 
-- Batch endpoint — POST /check-batch that takes an array of texts. Fan out with goroutines, one per text, collect results. This is where Go's concurrency model would genuinely shine.
+- A performance testing harness to profile how performant the spell tool is, and what the limits of the checker are.
+
+- Batch endpoint — POST /check-batch that takes an array of texts. Fan out with goroutines, one per text, collect results.
 
 - Confidence scoring — instead of just returning suggestions, return a confidence that the word is actually misspelt. A word 1 edit distance from a very common word is more likely a typo than a word 2 edits from a rare word. The frequency data gives you this.
 

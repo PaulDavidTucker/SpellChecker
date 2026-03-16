@@ -32,7 +32,7 @@ Check if the service is running and healthy.
 
 ### 2. Spell Check
 
-Check text for misspellings and repeated words.
+Check text for misspellings, repeated words, and capitalisation issues.
 
 **Endpoint:** `POST /check`
 
@@ -88,6 +88,14 @@ Check text for misspellings and repeated words.
       "column": 5
     }
   ],
+  "capitalisation_issues": [
+    {
+      "word": "it",
+      "offset": 28,
+      "line": 1,
+      "column": 29
+    }
+  ],
   "token_count": 7,
   "checked_count": 6,
   "elapsed_ms": 0.5
@@ -100,6 +108,7 @@ Check text for misspellings and repeated words.
 |-------|------|-------------|
 | `misspellings` | array | List of misspelled words found |
 | `repeated_words` | array | List of words appearing twice consecutively |
+| `capitalisation_issues` | array | Lowercase words following sentence-ending punctuation |
 | `token_count` | integer | Total number of tokens in the text |
 | `checked_count` | integer | Number of tokens that were spell-checked |
 | `elapsed_ms` | float | Time taken to process the request in milliseconds |
@@ -216,7 +225,13 @@ Different profiles can have different allowed terms. For example, the "bbc-news"
 
 Automatically detects words that appear twice in a row (e.g., "the the").
 
-### 3. Context-Aware Checking
+### 3. Capitalisation Issue Detection
+
+Detects lowercase words that follow sentence-ending punctuation (`.`, `!`, `?`). This catches editorial issues like "The end. it was..." where "it" should be capitalised as "It".
+
+Words in the allowlist or ignore_terms are not flagged for capitalisation issues.
+
+### 4. Context-Aware Checking
 
 - Contractions are handled properly ("don't" vs "don" + "t")
 - Hyphenated words are split and checked

@@ -60,12 +60,13 @@ The heart of the system. Manages the spell-checking pipeline:
 2. For each token:
    a. Check if checkable (skip URLs, emails, etc.)
    b. Check for repeated words (compare with previous token)
-   c. Check ignore terms list
-   d. Check allowlist (profile + base)
-   e. Look up in SymSpell dictionary
-   f. If not found, collect suggestions
+   c. Check for capitalisation issues (lowercase after . ! ?)
+   d. Check ignore terms list
+   e. Check allowlist (profile + base)
+   f. Look up in SymSpell dictionary
+   g. If not found, collect suggestions
         ↓
-3. Return results (misspellings + repeated words)
+3. Return results (misspellings + repeated words + capitalisation issues)
 ```
 
 ### 3. Tokenizer
@@ -151,24 +152,29 @@ Provides fuzzy string matching:
 │ Request  │     │  Scanner │     │ Pipeline │
 └──────────┘     └──────────┘     └────┬─────┘
                                         │
-                      ┌────────────────┼────────────────┐
-                      ↓                ↓                ↓
-                 ┌────────┐      ┌──────────┐    ┌─────────┐
-                 │ Ignore │      │ Allowlist│    │SymSpell │
-                 │ Terms  │      │  Store   │    │  Lookup │
-                 └────────┘      └──────────┘    └─────────┘
-                      │                │                │
-                      └────────────────┼────────────────┘
-                                       ↓
-                                 ┌──────────┐
-                                 │ Suggest  │
-                                 │  Engine  │
-                                 └────┬─────┘
+                       ┌────────────────┼────────────────┐
+                       ↓                ↓                ↓
+                  ┌────────┐      ┌──────────┐    ┌─────────┐
+                  │ Ignore │      │ Allowlist│    │SymSpell │
+                  │ Terms  │      │  Store   │    │  Lookup │
+                  └────────┘      └──────────┘    └─────────┘
+                       │                │                │
+                       └────────────────┼────────────────┘
+                                        ↓
+                               ┌──────────────┐
+                               │  Capitalise  │
+                               │    Check     │
+                               └──────┬───────┘
                                       ↓
-                              ┌───────────────┐
-                              │  HTTP Response │
-                              │  (JSON)       │
-                              └───────────────┘
+                               ┌──────────────┐
+                               │   Suggest    │
+                               │    Engine    │
+                               └──────┬───────┘
+                                      ↓
+                               ┌───────────────┐
+                               │  HTTP Response │
+                               │  (JSON)       │
+                               └───────────────┘
 ```
 
 ## Performance Optimizations
@@ -239,7 +245,7 @@ Stateless design allows multiple instances:
 ### Unit Tests
 
 - Tokenizer: 40+ test cases covering edge cases
-- Checker: 20+ test cases for pipeline
+- Checker: 25+ test cases for pipeline (including capitalisation)
 - Dictionary loader: 11 test cases
 - Allowlist store: Hot-reload tests
 

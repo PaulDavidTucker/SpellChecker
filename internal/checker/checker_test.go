@@ -530,3 +530,216 @@ func TestRepeatedWordWithPunctuation(t *testing.T) {
 		t.Fatalf("Expected 1 repeated word, got %d", len(result.RepeatedWords))
 	}
 }
+
+func TestCapitalisationAfterPeriod(t *testing.T) {
+	pool, _ := setupTestPool(t)
+	checker := pool.Get("test-profile")
+
+	result := checker.Check(CheckRequest{
+		Text:      "The government announced. it was a partnership",
+		ProfileID: "test-profile",
+	})
+
+	if len(result.CapitalisationIssues) != 1 {
+		t.Fatalf("Expected 1 capitalisation issue, got %d", len(result.CapitalisationIssues))
+	}
+
+	ci := result.CapitalisationIssues[0]
+	if ci.Word != "it" {
+		t.Errorf("Expected capitalisation issue for 'it', got %s", ci.Word)
+	}
+	if ci.Line != 1 {
+		t.Errorf("Expected line 1, got %d", ci.Line)
+	}
+}
+
+func TestCapitalisationAfterExclamation(t *testing.T) {
+	pool, _ := setupTestPool(t)
+	checker := pool.Get("test-profile")
+
+	result := checker.Check(CheckRequest{
+		Text:      "The government announced! it was great",
+		ProfileID: "test-profile",
+	})
+
+	if len(result.CapitalisationIssues) != 1 {
+		t.Fatalf("Expected 1 capitalisation issue, got %d", len(result.CapitalisationIssues))
+	}
+
+	if result.CapitalisationIssues[0].Word != "it" {
+		t.Errorf("Expected capitalisation issue for 'it', got %s", result.CapitalisationIssues[0].Word)
+	}
+}
+
+func TestCapitalisationAfterQuestion(t *testing.T) {
+	pool, _ := setupTestPool(t)
+	checker := pool.Get("test-profile")
+
+	result := checker.Check(CheckRequest{
+		Text:      "Did the government announce? yes it did",
+		ProfileID: "test-profile",
+	})
+
+	if len(result.CapitalisationIssues) != 1 {
+		t.Fatalf("Expected 1 capitalisation issue, got %d", len(result.CapitalisationIssues))
+	}
+
+	if result.CapitalisationIssues[0].Word != "yes" {
+		t.Errorf("Expected capitalisation issue for 'yes', got %s", result.CapitalisationIssues[0].Word)
+	}
+}
+
+func TestNoCapitalisationIssuesWhenCorrect(t *testing.T) {
+	pool, _ := setupTestPool(t)
+	checker := pool.Get("test-profile")
+
+	result := checker.Check(CheckRequest{
+		Text:      "The government announced. It was a partnership",
+		ProfileID: "test-profile",
+	})
+
+	if len(result.CapitalisationIssues) != 0 {
+		t.Errorf("Expected 0 capitalisation issues, got %d: %+v", len(result.CapitalisationIssues), result.CapitalisationIssues)
+	}
+}
+
+func TestCapitalisationWithMultipleSentences(t *testing.T) {
+	pool, _ := setupTestPool(t)
+	checker := pool.Get("test-profile")
+
+	result := checker.Check(CheckRequest{
+		Text:      "First sentence. second sentence! third sentence? fourth",
+		ProfileID: "test-profile",
+	})
+
+	if len(result.CapitalisationIssues) != 3 {
+		t.Fatalf("Expected 3 capitalisation issues (second, third, fourth), got %d", len(result.CapitalisationIssues))
+	}
+
+	words := make([]string, 3)
+	for i, ci := range result.CapitalisationIssues {
+		words[i] = ci.Word
+	}
+
+	if words[0] != "second" || words[1] != "third" || words[2] != "fourth" {
+		t.Errorf("Expected 'second', 'third', 'fourth', got %v", words)
+	}
+}
+
+func TestCapitalisationInAllowlist(t *testing.T) {
+	_, dir := setupTestPool(t)
+
+	// Add a lowercase term to profile that should be allowed even after period
+	basePath := filepath.Join(dir, "base.yaml")
+	writeTestFile(t, basePath, `
+terms:
+  - iPhone
+`)
+
+	// Reload store with updated base allowlist
+	profilesDir := filepath.Join(dir, "profiles")
+	store, err := allowlist.NewStore(basePath, profilesDir)
+	if err != nil {
+		t.Fatalf("NewStore failed: %v", err)
+	}
+
+	// Create new pool with updated store
+	dictPath := filepath.Join(dir, "test_dict.txt")
+	newPool, err := NewPool(dictPath, store)
+	if err != nil {
+		t.Fatalf("NewPool failed: %v", err)
+	}
+
+	checker := newPool.Get("test-profile")
+
+	result := checker.Check(CheckRequest{
+		Text:      "New phone. iphone is here",
+		ProfileID: "test-profile",
+	})
+
+	// "iphone" is in allowlist, should not be flagged
+	for _, ci := range result.CapitalisationIssues {
+		if strings.EqualFold(ci.Word, "iphone") {
+			t.Error("Expected 'iphone' to be ignored due to allowlist")
+		}
+	}
+}
+
+func TestCapitalisationWithIgnoreTerms(t *testing.T) {
+	pool, _ := setupTestPool(t)
+	checker := pool.Get("test-profile")
+
+	result := checker.Check(CheckRequest{
+		Text:        "The government announced. k8s is great",
+		ProfileID:   "test-profile",
+		IgnoreTerms: []string{"k8s"},
+	})
+
+	// "k8s" is in ignore_terms, should not be flagged
+	for _, ci := range result.CapitalisationIssues {
+		if strings.EqualFold(ci.Word, "k8s") {
+			t.Error("Expected 'k8s' to be ignored due to ignore_terms")
+		}
+	}
+}
+
+func TestCapitalisationPositionTracking(t *testing.T) {
+	pool, _ := setupTestPool(t)
+	checker := pool.Get("test-profile")
+
+	result := checker.Check(CheckRequest{
+		Text:      "Hello. world",
+		ProfileID: "test-profile",
+	})
+
+	if len(result.CapitalisationIssues) != 1 {
+		t.Fatalf("Expected 1 capitalisation issue, got %d", len(result.CapitalisationIssues))
+	}
+
+	ci := result.CapitalisationIssues[0]
+	// "world" starts at byte offset 7 ("Hello. " = 7 bytes)
+	if ci.Offset != 7 {
+		t.Errorf("Expected offset 7, got %d", ci.Offset)
+	}
+	if ci.Line != 1 {
+		t.Errorf("Expected line 1, got %d", ci.Line)
+	}
+	if ci.Column != 8 {
+		t.Errorf("Expected column 8, got %d", ci.Column)
+	}
+}
+
+func TestNoCapitalisationForNonCheckableTokens(t *testing.T) {
+	pool, _ := setupTestPool(t)
+	checker := pool.Get("test-profile")
+
+	// Numbers after period should not trigger capitalisation issue
+	result := checker.Check(CheckRequest{
+		Text:      "Version 1.0 is out",
+		ProfileID: "test-profile",
+	})
+
+	// The "1.0" is a number token, shouldn't cause capitalisation issues
+	// and "is" follows "0" which is a number, not a sentence end
+	for _, ci := range result.CapitalisationIssues {
+		t.Errorf("Unexpected capitalisation issue: %+v", ci)
+	}
+}
+
+func TestCapitalisationAfterNewline(t *testing.T) {
+	pool, _ := setupTestPool(t)
+	checker := pool.Get("test-profile")
+
+	result := checker.Check(CheckRequest{
+		Text:      "First sentence.\nsecond sentence",
+		ProfileID: "test-profile",
+	})
+
+	if len(result.CapitalisationIssues) != 1 {
+		t.Fatalf("Expected 1 capitalisation issue after newline, got %d", len(result.CapitalisationIssues))
+	}
+
+	if result.CapitalisationIssues[0].Word != "second" {
+		t.Errorf("Expected capitalisation issue for 'second', got %s", result.CapitalisationIssues[0].Word)
+	}
+}

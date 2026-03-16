@@ -1,5 +1,7 @@
 # SpellChecker Service
 
+<img src="files/SpellCheckLogo.jpg" width="1000" height="500">
+
 A containerised spell checker for short form text, written in Go.
 
 ## Features
@@ -105,9 +107,7 @@ curl -X POST http://localhost:8080/check \
       "offset": 4,
       "line": 1,
       "column": 5,
-      "suggestions": [
-        {"word": "government", "edit_distance": 1}
-      ]
+      "suggestions": [{ "word": "government", "edit_distance": 1 }]
     }
   ],
   "repeated_words": [],
@@ -146,12 +146,12 @@ Open `http://localhost:8080/docs` in your browser for Swagger UI.
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DICT_PATH` | `/dictionaries/en_gb.txt` | Path to the dictionary word list |
-| `BASE_ALLOWLIST_PATH` | `/config/base-allowlist.yaml` | Path to the allowlist configuration |
-| `PROFILES_DIR` | `/config/profiles` | Directory containing profile YAML files |
-| `LISTEN_ADDR` | `:8080` | HTTP server bind address |
+| Variable              | Default                       | Description                             |
+| --------------------- | ----------------------------- | --------------------------------------- |
+| `DICT_PATH`           | `/dictionaries/en_gb.txt`     | Path to the dictionary word list        |
+| `BASE_ALLOWLIST_PATH` | `/config/base-allowlist.yaml` | Path to the allowlist configuration     |
+| `PROFILES_DIR`        | `/config/profiles`            | Directory containing profile YAML files |
+| `LISTEN_ADDR`         | `:8080`                       | HTTP server bind address                |
 
 ## Testing
 
