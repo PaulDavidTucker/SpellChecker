@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  spellchecker:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8080:8080"
+    environment:
+      - DICT_PATH=/dictionaries/en_gb.txt
+      - BASE_ALLOWLIST_PATH=/config/base-allowlist.yaml
+      - PROFILES_DIR=/config/profiles
+      - LISTEN_ADDR=:8080
+    volumes:
+      - ./config:/config
+      - ./dictionaries:/dictionaries
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "./spellcheck", "-health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

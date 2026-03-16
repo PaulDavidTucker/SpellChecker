@@ -100,7 +100,7 @@ terms:
 		t.Fatalf("NewPool failed: %v", err)
 	}
 
-	return NewHandler(pool), dir
+	return NewHandler(pool, store), dir
 }
 
 func TestHealthEndpoint(t *testing.T) {

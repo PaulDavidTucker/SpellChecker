@@ -14,11 +14,12 @@ type SpellCheckRequest struct {
 
 // SpellCheckResponse is the JSON response.
 type SpellCheckResponse struct {
-	Misspellings  []MisspellingResponse  `json:"misspellings"`
-	RepeatedWords []RepeatedWordResponse `json:"repeated_words"`
-	TokenCount    int                    `json:"token_count"`
-	CheckedCount  int                    `json:"checked_count"`
-	ElapsedMs     float64                `json:"elapsed_ms"`
+	Misspellings         []MisspellingResponse         `json:"misspellings"`
+	RepeatedWords        []RepeatedWordResponse        `json:"repeated_words"`
+	CapitalisationIssues []CapitalisationIssueResponse `json:"capitalisation_issues"`
+	TokenCount           int                           `json:"token_count"`
+	CheckedCount         int                           `json:"checked_count"`
+	ElapsedMs            float64                       `json:"elapsed_ms"`
 }
 
 type MisspellingResponse struct {
@@ -30,6 +31,13 @@ type MisspellingResponse struct {
 }
 
 type RepeatedWordResponse struct {
+	Word   string `json:"word"`
+	Offset int    `json:"offset"`
+	Line   int    `json:"line"`
+	Column int    `json:"column"`
+}
+
+type CapitalisationIssueResponse struct {
 	Word   string `json:"word"`
 	Offset int    `json:"offset"`
 	Line   int    `json:"line"`

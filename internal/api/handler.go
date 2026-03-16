@@ -6,18 +6,21 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/PaulDavidTucker/SpellChecker/internal/allowlist"
 	"github.com/PaulDavidTucker/SpellChecker/internal/checker"
 )
 
 type Handler struct {
-	pool *checker.Pool
+	pool  *checker.Pool
+	store *allowlist.Store
 }
 
-func NewHandler(pool *checker.Pool) *Handler {
-	return &Handler{pool: pool}
+func NewHandler(pool *checker.Pool, store *allowlist.Store) *Handler {
+	return &Handler{pool: pool, store: store}
 }
 
 // loggingMiddleware wraps an http.Handler and logs each request
@@ -46,6 +49,31 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+// corsMiddleware adds CORS headers to allow browser requests
+type corsHandler struct {
+	handler http.Handler
+}
+
+func (ch *corsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Add CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+
+	// Handle preflight OPTIONS request
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	ch.handler.ServeHTTP(w, r)
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return &corsHandler{handler: next}
+}
+
 func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /check", h.handleCheck)
@@ -53,8 +81,20 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /docs", h.handleDocs)
 	mux.HandleFunc("GET /swagger.json", h.handleSwaggerJSON)
 
-	// Wrap with logging middleware
-	return loggingMiddleware(mux)
+	// Profile management endpoints
+	mux.HandleFunc("GET /profiles", h.handleListProfiles)
+	mux.HandleFunc("POST /profiles", h.handleCreateProfile)
+	mux.HandleFunc("GET /profiles/{id}", h.handleGetProfile)
+	mux.HandleFunc("PUT /profiles/{id}", h.handleUpdateProfile)
+	mux.HandleFunc("DELETE /profiles/{id}", h.handleDeleteProfile)
+	mux.HandleFunc("POST /profiles/{id}/terms", h.handleAddTerm)
+	mux.HandleFunc("DELETE /profiles/{id}/terms/{term}", h.handleRemoveTerm)
+
+	// Static files (for production) - API routes take precedence
+	mux.HandleFunc("GET /", h.handleStaticFiles)
+
+	// Wrap with CORS and logging middleware
+	return corsMiddleware(loggingMiddleware(mux))
 }
 
 func (h *Handler) handleCheck(
@@ -111,11 +151,12 @@ func (h *Handler) handleCheck(
 
 	// Map internal types to response types
 	resp := SpellCheckResponse{
-		TokenCount:    result.TokenCount,
-		CheckedCount:  result.CheckedCount,
-		ElapsedMs:     result.ElapsedMs,
-		Misspellings:  make([]MisspellingResponse, 0, len(result.Misspellings)),
-		RepeatedWords: make([]RepeatedWordResponse, 0, len(result.RepeatedWords)),
+		TokenCount:           result.TokenCount,
+		CheckedCount:         result.CheckedCount,
+		ElapsedMs:            result.ElapsedMs,
+		Misspellings:         make([]MisspellingResponse, 0, len(result.Misspellings)),
+		RepeatedWords:        make([]RepeatedWordResponse, 0, len(result.RepeatedWords)),
+		CapitalisationIssues: make([]CapitalisationIssueResponse, 0, len(result.CapitalisationIssues)),
 	}
 
 	for _, ms := range result.Misspellings {
@@ -146,6 +187,15 @@ func (h *Handler) handleCheck(
 		})
 	}
 
+	for _, ci := range result.CapitalisationIssues {
+		resp.CapitalisationIssues = append(resp.CapitalisationIssues, CapitalisationIssueResponse{
+			Word:   ci.Word,
+			Offset: ci.Offset,
+			Line:   ci.Line,
+			Column: ci.Column,
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
@@ -172,4 +222,176 @@ func (h *Handler) handleSwaggerJSON(
 ) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(swaggerJSON))
+}
+
+// Profile handlers
+
+func (h *Handler) handleListProfiles(w http.ResponseWriter, r *http.Request) {
+	ids := h.store.ProfileIDs()
+	profiles := make([]ProfileResponse, 0, len(ids))
+
+	for _, id := range ids {
+		terms := h.store.ProfileTerms(id)
+		profiles = append(profiles, ProfileResponse{
+			ID:    id,
+			Terms: terms,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(profiles)
+}
+
+func (h *Handler) handleGetProfile(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	profile, ok := h.store.GetProfile(id)
+	if !ok {
+		http.Error(w, `{"error":"profile not found"}`, http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(ProfileResponse{
+		ID:          profile.ID,
+		Description: profile.Description,
+		Terms:       profile.Terms,
+	})
+}
+
+func (h *Handler) handleCreateProfile(w http.ResponseWriter, r *http.Request) {
+	var profile allowlist.Profile
+	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
+		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
+		return
+	}
+
+	if profile.ID == "" {
+		http.Error(w, `{"error":"profile_id is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.store.CreateProfile(profile); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(ProfileResponse{
+		ID:          profile.ID,
+		Description: profile.Description,
+		Terms:       profile.Terms,
+	})
+}
+
+func (h *Handler) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var profile allowlist.Profile
+	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
+		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
+		return
+	}
+
+	profile.ID = id // Ensure ID matches URL
+
+	if err := h.store.UpdateProfile(profile); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, `{"error":"profile not found"}`, http.StatusNotFound)
+			return
+		}
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(ProfileResponse{
+		ID:          profile.ID,
+		Description: profile.Description,
+		Terms:       profile.Terms,
+	})
+}
+
+func (h *Handler) handleDeleteProfile(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := h.store.DeleteProfile(id); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, `{"error":"profile not found"}`, http.StatusNotFound)
+			return
+		}
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) handleAddTerm(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req struct {
+		Term string `json:"term"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
+		return
+	}
+
+	if req.Term == "" {
+		http.Error(w, `{"error":"term is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.store.AddTermToProfile(id, req.Term); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, `{"error":"profile not found"}`, http.StatusNotFound)
+			return
+		}
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"status": "added"})
+}
+
+func (h *Handler) handleRemoveTerm(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	term := r.PathValue("term")
+
+	if err := h.store.RemoveTermFromProfile(id, term); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, `{"error":"profile or term not found"}`, http.StatusNotFound)
+			return
+		}
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ProfileResponse is the API response format for profiles
+type ProfileResponse struct {
+	ID          string   `json:"id"`
+	Description string   `json:"description,omitempty"`
+	Terms       []string `json:"terms"`
+}
+
+// handleStaticFiles serves the React app static files in production
+func (h *Handler) handleStaticFiles(w http.ResponseWriter, r *http.Request) {
+	// Try to serve from webapp/dist directory (production build)
+	path := "/webapp/dist" + r.URL.Path
+	if r.URL.Path == "/" {
+		path = "/webapp/dist/index.html"
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// If static files not found, return API info
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message":"SpellChecker API","endpoints":["/health","/check","/profiles","/docs"],"webapp":"not built - run npm run build in webapp/"}`))
+		return
+	}
+
+	// Serve the file
+	http.ServeFile(w, r, path)
 }

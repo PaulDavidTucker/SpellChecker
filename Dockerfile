@@ -11,8 +11,4 @@ COPY --from=builder /app/dictionaries/ /dictionaries/
 COPY --from=builder /app/config/ /config/
 EXPOSE 8080
 
-# Health check - runs every 30s, 10s timeout, 3 retries before unhealthy
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD ["/spellcheck", "-health-check"]
-
 ENTRYPOINT ["/spellcheck"]
