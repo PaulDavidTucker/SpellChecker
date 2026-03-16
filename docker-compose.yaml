@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   spellchecker:
     build:
@@ -13,4 +11,29 @@ services:
       - PROFILES_DIR=/config/profiles
       - LISTEN_ADDR=:8080
       - HEALTH_CHECK_URL=http://localhost:8080/health
+    volumes:
+      - ./config:/config
+      - ./dictionaries:/dictionaries
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/spellcheck", "-health-check"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  webapp:
+    build:
+      context: ./webapp
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - spellchecker
+    volumes:
+      - ./webapp:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0
     restart: unless-stopped

@@ -3,6 +3,7 @@ package checker
 import (
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/PaulDavidTucker/SpellChecker/internal/allowlist"
 	"github.com/PaulDavidTucker/SpellChecker/internal/tokenizer"
@@ -56,10 +57,29 @@ func (c *Checker) Check(req CheckRequest) CheckResult {
 	// Step 2: Check each token through the pipeline
 	var misspellings []Misspelling
 	var repeatedWords []RepeatedWord
+	var capitalisationIssues []CapitalisationIssue
 	checkedCount := 0
 	var prevToken *tokenizer.Token
+	sentenceJustEnded := true // Start of text is also a sentence start
 
 	for _, tok := range tokens {
+		// Check for capitalisation issues - if we're at a sentence start and
+		// the word begins with lowercase, flag it (unless it's in allowlist or ignore set)
+		if sentenceJustEnded && isCheckable(tok) {
+			if isLowercaseWord(tok.Text) {
+				// Check if this is a domain-like pattern (e.g., .com) or allowlisted
+				if !c.shouldIgnoreCapitalisation(tok, ignoreSet) {
+					capitalisationIssues = append(capitalisationIssues, CapitalisationIssue{
+						Word:   tok.Text,
+						Offset: tok.Offset,
+						Line:   tok.Line,
+						Column: tok.Column,
+					})
+				}
+			}
+			sentenceJustEnded = false
+		}
+
 		// Check for repeated words - compare with previous checkable token
 		if isCheckable(tok) && tok.Kind != tokenizer.TokenHyphenated {
 			if prevToken != nil && strings.EqualFold(tok.Normalised, prevToken.Normalised) {
@@ -72,6 +92,14 @@ func (c *Checker) Check(req CheckRequest) CheckResult {
 				})
 			}
 			prevToken = &tok
+		}
+
+		// Track sentence-ending punctuation
+		if tok.Kind == tokenizer.TokenPunctuation && isSentenceEndingPunct(tok.Text) {
+			sentenceJustEnded = true
+		} else if tok.Kind != tokenizer.TokenWhitespace {
+			// Any non-whitespace, non-sentence-ending token resets the flag
+			sentenceJustEnded = false
 		}
 
 		if !isCheckable(tok) {
@@ -159,10 +187,11 @@ func (c *Checker) Check(req CheckRequest) CheckResult {
 	}
 
 	return CheckResult{
-		Misspellings:  misspellings,
-		RepeatedWords: repeatedWords,
-		TokenCount:    len(tokens),
-		CheckedCount:  checkedCount,
+		Misspellings:         misspellings,
+		RepeatedWords:        repeatedWords,
+		CapitalisationIssues: capitalisationIssues,
+		TokenCount:           len(tokens),
+		CheckedCount:         checkedCount,
 		ElapsedMs: float64(
 			time.Since(start).Microseconds(),
 		) / 1000.0,
@@ -277,4 +306,42 @@ func isCheckable(tok tokenizer.Token) bool {
 	default:
 		return false
 	}
+}
+
+// isSentenceEndingPunct returns true if the punctuation marks the end
+// of a sentence (. ! ?)
+func isSentenceEndingPunct(punct string) bool {
+	return punct == "." || punct == "!" || punct == "?"
+}
+
+// isLowercaseWord returns true if the word starts with a lowercase letter.
+// This handles Unicode properly by checking the first rune.
+func isLowercaseWord(word string) bool {
+	if word == "" {
+		return false
+	}
+	// Get first rune (handles multi-byte UTF-8)
+	for _, r := range word {
+		return unicode.IsLower(r)
+	}
+	return false
+}
+
+// shouldIgnoreCapitalisation checks if a word should be ignored for
+// capitalisation checking. This includes:
+// - Words in the ignore set
+// - Words in the allowlist
+// - Common domain extensions when they follow a dot
+func (c *Checker) shouldIgnoreCapitalisation(tok tokenizer.Token, ignoreSet map[string]struct{}) bool {
+	// Check ignore set
+	if _, ignored := ignoreSet[strings.ToLower(tok.Text)]; ignored {
+		return true
+	}
+
+	// Check allowlist
+	if c.store.IsAllowed(strings.ToLower(tok.Text), c.profile) {
+		return true
+	}
+
+	return false
 }

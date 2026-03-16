@@ -116,6 +116,12 @@ const swaggerJSON = `{
                   "value": {
                     "text": "The the quick brown fox"
                   }
+                },
+                "with-capitalisation": {
+                  "summary": "Text with capitalisation issues after period",
+                  "value": {
+                    "text": "The goverment announced. it was a new partnership"
+                  }
                 }
               }
             }
@@ -214,6 +220,13 @@ const swaggerJSON = `{
               "$ref": "#/components/schemas/RepeatedWord"
             }
           },
+          "capitalisation_issues": {
+            "type": "array",
+            "description": "Lowercase words following sentence-ending punctuation (. ! ?)",
+            "items": {
+              "$ref": "#/components/schemas/CapitalisationIssue"
+            }
+          },
           "token_count": {
             "type": "integer",
             "description": "Total number of tokens in the text",
@@ -301,6 +314,32 @@ const swaggerJSON = `{
             "type": "integer",
             "description": "Levenshtein edit distance from the misspelling",
             "example": 1
+          }
+        }
+      },
+      "CapitalisationIssue": {
+        "type": "object",
+        "description": "A lowercase word that follows sentence-ending punctuation",
+        "properties": {
+          "word": {
+            "type": "string",
+            "description": "The lowercase word",
+            "example": "it"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Byte offset where the word starts",
+            "example": 28
+          },
+          "line": {
+            "type": "integer",
+            "description": "Line number (1-based)",
+            "example": 1
+          },
+          "column": {
+            "type": "integer",
+            "description": "Column number (1-based)",
+            "example": 29
           }
         }
       }

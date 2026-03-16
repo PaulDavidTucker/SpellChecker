@@ -1,5 +1,7 @@
 # SpellChecker Service
 
+<img src="files/SpellCheckLogo.jpg" width="1000" height="500">
+
 A containerised spell checker for short form text, written in Go.
 
 ## Features
@@ -9,9 +11,11 @@ A containerised spell checker for short form text, written in Go.
 - **Profile-based**: Different allowlists for different use cases (BBC News, default, etc.)
 - **Smart tokenization**: Handles contractions, hyphenated words, acronyms, URLs, emails, quoted text
 - **Repeated word detection**: Catches "the the" automatically
+- **Capitalisation checking**: Detects lowercase words after sentence-ending punctuation
 - **Quote handling**: Supports straight and curly/smart quotes
 - **Hot reload**: Profile changes take effect immediately without restart
 - **Base64 support**: Send complex text with special characters easily
+- **Web UI**: React-based webapp for easy spell checking
 
 ## Quick Start
 
@@ -22,8 +26,14 @@ A containerised spell checker for short form text, written in Go.
 git clone <repository-url>
 cd SpellChecker
 
-# Build and run
+# Build and run both backend and webapp (with port checking)
+./start.sh
+
+# Or use docker-compose directly:
 docker-compose up -d
+
+# Access the webapp
+# Open http://localhost:3000 in your browser
 
 # View logs
 docker-compose logs -f
@@ -32,7 +42,31 @@ docker-compose logs -f
 docker-compose down
 ```
 
-### Using Docker
+**Note on Port Conflicts:** The services use ports 8080 (backend) and 3000 (frontend). If these ports are already in use, the `./start.sh` script will warn you. You can either:
+1. Stop the conflicting services
+2. Or modify the port mappings in `docker-compose.yaml`
+
+**Services:**
+- Backend API: http://localhost:8080
+- Web UI: http://localhost:3000
+
+### Production Deployment
+
+For production deployments with a single container (recommended):
+
+```bash
+# Build production image
+docker build -f Dockerfile.prod -t spellchecker:latest .
+
+# Run (single port serves both UI and API)
+docker run -d -p 8080:8080 spellchecker:latest
+
+# Access at http://localhost:8080
+```
+
+See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment options.
+
+### Using Docker (API Only)
 
 ```bash
 # Build image
@@ -105,9 +139,7 @@ curl -X POST http://localhost:8080/check \
       "offset": 4,
       "line": 1,
       "column": 5,
-      "suggestions": [
-        {"word": "government", "edit_distance": 1}
-      ]
+      "suggestions": [{ "word": "government", "edit_distance": 1 }]
     }
   ],
   "repeated_words": [],
@@ -146,12 +178,12 @@ Open `http://localhost:8080/docs` in your browser for Swagger UI.
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DICT_PATH` | `/dictionaries/en_gb.txt` | Path to the dictionary word list |
-| `BASE_ALLOWLIST_PATH` | `/config/base-allowlist.yaml` | Path to the allowlist configuration |
-| `PROFILES_DIR` | `/config/profiles` | Directory containing profile YAML files |
-| `LISTEN_ADDR` | `:8080` | HTTP server bind address |
+| Variable              | Default                       | Description                             |
+| --------------------- | ----------------------------- | --------------------------------------- |
+| `DICT_PATH`           | `/dictionaries/en_gb.txt`     | Path to the dictionary word list        |
+| `BASE_ALLOWLIST_PATH` | `/config/base-allowlist.yaml` | Path to the allowlist configuration     |
+| `PROFILES_DIR`        | `/config/profiles`            | Directory containing profile YAML files |
+| `LISTEN_ADDR`         | `:8080`                       | HTTP server bind address                |
 
 ## Testing
 
@@ -218,6 +250,10 @@ SpellChecker/
 │   ├── fixtures.json
 │   ├── main.go
 │   └── demo_results.html
+├── webapp/                      # React web application
+│   ├── src/
+│   ├── package.json
+│   └── Dockerfile
 ├── Dockerfile
 ├── docker-compose.yaml
 └── README.md

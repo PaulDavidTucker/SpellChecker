@@ -474,20 +474,154 @@ docker-compose down
 docker-compose up --build -d
 ```
 
-## Migration Guide
+## Webapp Deployment Options
 
-### From v1 to v2
+The React webapp can be deployed in several configurations depending on your needs.
 
-If upgrading:
+### Option A: Single Container (Recommended)
 
-1. Backup existing config
-2. Update dictionary format if changed
-3. Test with harness: `cd harness && go run .`
-4. Deploy new version
-5. Verify health endpoint
+**Best for:** Simple deployments, single-server setups
 
-### Database-Free Operation
+The Go backend serves both the API and the built React frontend from a single container on port 8080.
 
-No database to migrate! All configuration is file-based:
-- YAML files in `config/`
-- Text files in `dictionaries/`
+**Build:**
+```bash
+# Build the production image (includes both Go and React)
+docker build -f Dockerfile.prod -t spellchecker:latest .
+
+# Run it
+docker run -d -p 8080:8080 spellchecker:latest
+```
+
+**Access:**
+- Web UI: http://localhost:8080
+- API: http://localhost:8080
+
+**Files:**
+- `Dockerfile.prod` - Multi-stage build
+- `docker-compose.prod.yaml` - Compose configuration
+
+### Option B: Separate Development Containers
+
+**Best for:** Local development with hot reload
+
+Frontend and backend run in separate containers with volume mounts for live code reloading.
+
+**Run:**
+```bash
+./start.sh
+```
+
+**Access:**
+- Web UI: http://localhost:3000 (Vite dev server)
+- API: http://localhost:8080
+- Vite proxies API calls to backend
+
+**Files:**
+- `docker-compose.yaml` - Development configuration
+- `start.sh` - Port check + compose startup
+
+### Option C: Production with Nginx
+
+**Best for:** High-traffic production environments
+
+Nginx serves static files and proxies API requests to the Go backend.
+
+**Architecture:**
+```
+User → Nginx (443/80)
+       ├── /api/* → Go Backend (8080)
+       └── /* → React Static Files
+```
+
+**Files needed:**
+- `docker-compose.nginx.yaml` (to be created)
+- `nginx.conf` (to be created)
+
+## Environment Variables
+
+### Backend (Go)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DICT_PATH` | `/dictionaries/en_gb.txt` | Path to dictionary file |
+| `BASE_ALLOWLIST_PATH` | `/config/base-allowlist.yaml` | Base allowlist config |
+| `PROFILES_DIR` | `/config/profiles` | Profile configurations |
+| `LISTEN_ADDR` | `:8080` | HTTP server address |
+
+### Frontend (React) - Development Only
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_URL` | `http://localhost:8080` | API endpoint for dev proxy |
+
+## Production Deployment Checklist
+
+Before deploying to production:
+
+- [ ] Build production image: `docker build -f Dockerfile.prod .`
+- [ ] Verify static files are included (React build in `/webapp/dist`)
+- [ ] Set up SSL/TLS certificates
+- [ ] Configure proper logging
+- [ ] Set up health check monitoring
+- [ ] Configure backup for custom profiles
+- [ ] Set up rate limiting (if using nginx)
+- [ ] Test with production-like load
+
+## Troubleshooting Webapp Issues
+
+### Connection Reset Error
+
+**Problem:** Port 3000 shows "connection reset"
+
+**Cause:** Vite dev server only binds to localhost by default in Docker
+
+**Solution:** 
+- Updated `vite.config.ts` to use `host: '0.0.0.0'`
+- Updated `docker-compose.yaml` to use `--host 0.0.0.0` flag
+
+### Static Files Not Found
+
+**Problem:** Go backend returns "webapp not built" message
+
+**Cause:** React app wasn't built before creating Docker image
+
+**Solution:**
+```bash
+cd webapp && npm run build
+cd .. && docker build -f Dockerfile.prod .
+```
+
+### API Not Accessible
+
+**Problem:** Frontend can't reach backend
+
+**Development:** Vite proxy handles this automatically
+
+**Production:** Make sure both are served from same origin (single container approach)
+
+## Migration from API-Only to Webapp
+
+If you were previously running just the Go API:
+
+1. **Backup your profiles:**
+   ```bash
+   cp -r config/profiles config/profiles.backup
+   ```
+
+2. **Build the new production image:**
+   ```bash
+   docker build -f Dockerfile.prod -t spellchecker:latest .
+   ```
+
+3. **Update your compose file** to use the new image
+
+4. **Deploy:**
+   ```bash
+   docker-compose -f docker-compose.prod.yaml up -d
+   ```
+
+5. **Access the webapp** at the same URL as before (e.g., http://localhost:8080)
+
+The web UI will now be available at the root URL, while the API continues to work on its existing endpoints.
+

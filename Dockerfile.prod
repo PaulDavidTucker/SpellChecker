@@ -1,0 +1,42 @@
+# Multi-stage Dockerfile for production
+# Builds both the Go backend and React frontend, then combines them
+
+# Stage 1: Build Go backend
+FROM golang:1.23.4-alpine AS go-builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /spellcheck ./cmd/server
+
+# Stage 2: Build React frontend
+FROM node:20-alpine AS node-builder
+WORKDIR /app
+COPY webapp/package*.json ./
+RUN npm ci
+COPY webapp/ .
+RUN npm run build
+
+# Stage 3: Final production image
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+
+# Copy Go binary
+COPY --from=go-builder /spellcheck .
+
+# Copy static files (dictionaries and config)
+COPY --from=go-builder /app/dictionaries/ /dictionaries/
+COPY --from=go-builder /app/config/ /config/
+
+# Copy built React app
+COPY --from=node-builder /app/dist /webapp/dist
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD ["./spellcheck", "-health-check"]
+
+ENTRYPOINT ["./spellcheck"]
