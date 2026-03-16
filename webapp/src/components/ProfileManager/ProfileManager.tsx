@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
-import { useProfiles } from '../../hooks/useSpellCheck';
+import { useProfiles, useSpellCheck } from '../../hooks/useSpellCheck';
 import { Button, Input, Card } from '../ui';
 import { Plus, Trash2, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Profile } from '../../types/api';
@@ -14,6 +14,8 @@ export function ProfileManager() {
     isProfileModalOpen,
     setIsProfileModalOpen,
   } = useAppStore();
+
+  const { mode } = useSpellCheck();
 
   const {
     fetchProfiles,
@@ -29,14 +31,16 @@ export function ProfileManager() {
   const [newTerm, setNewTerm] = useState('');
   const [activeProfileForTerm, setActiveProfileForTerm] = useState<string | null>(null);
 
-  // Load profiles on mount
+  // Load profiles on mount (only in API mode)
   useEffect(() => {
+    if (mode === 'wasm') return; // Skip API calls in WASM mode
+    
     const loadProfiles = async () => {
       const loaded = await fetchProfiles();
       setProfiles(loaded);
     };
     loadProfiles();
-  }, [fetchProfiles, setProfiles]);
+  }, [fetchProfiles, setProfiles, mode]);
 
   const handleCreateProfile = useCallback(async () => {
     if (!newProfileId.trim()) return;

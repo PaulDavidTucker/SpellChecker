@@ -24,7 +24,7 @@ export function useSpellCheck() {
     
     setWasmLoading(true);
     try {
-      await spellCheckerWASM.initialize('/spellchecker.wasm');
+      await spellCheckerWASM.initialize('./spellchecker.wasm');
       setWasmReady(true);
       console.log('WASM spell checker ready');
     } catch (err) {
