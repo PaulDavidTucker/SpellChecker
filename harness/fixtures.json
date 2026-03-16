@@ -1,0 +1,252 @@
+[
+  {
+    "id": "tc_01_simple_transposition",
+    "focus": "Transposition of adjacent letters",
+    "text": "The quick brwon fox jumed over the lazy dog. It was a very snuny day in the city center."
+  },
+  {
+    "id": "tc_02_double_words",
+    "focus": "Repeated words",
+    "text": "The committee decided to to review the the budget tomorrow morning. We hope hope for a quick resolution."
+  },
+  {
+    "id": "tc_03_bad_capitalization",
+    "focus": "Mid-word and missed capitalization",
+    "text": "apple announced a New prodUct today. tim cook was present to delivEr the keyNote address."
+  },
+  {
+    "id": "tc_04_double_letters",
+    "focus": "Missing or unnecessary double letters",
+    "text": "Finding good accomodation in the city is difficult. I highly reccomend booking your hotel in advance."
+  },
+  {
+    "id": "tc_05_phonetic_misspelling",
+    "focus": "Spelled how it sounds",
+    "text": "The performence was absoluteley incredible, desptie the heavy rain pouring down all nite."
+  },
+  {
+    "id": "tc_06_missing_spaces",
+    "focus": "Missing spacebars after punctuation",
+    "text": "What time is it?I don't really know,he replied.We should probably check the clock."
+  },
+  {
+    "id": "tc_07_vowel_confusion",
+    "focus": "Swapped or missing vowels",
+    "text": "It is a definate posibility that the government will change thier policy on enviornmental protections."
+  },
+  {
+    "id": "tc_08_homophones",
+    "focus": "Valid words used incorrectly (Good for testing if your binary has context awareness)",
+    "text": "Their going to park there car right over they're. Its not a big deal if the dog loses it's bone."
+  },
+  {
+    "id": "tc_09_mixed_alphanumeric",
+    "focus": "Accidental numbers in words",
+    "text": "We need to order 100 b0xes by M0nday. The delivery driver w1ll drop them off at the w4rehouse."
+  },
+  {
+    "id": "tc_10_extreme_typos",
+    "focus": "High Levenshtein distance (mashing the keyboard)",
+    "text": "The sympony orchestra played a bueatfiul piese of music. Everyone in the audince was completly mesmerzed."
+  },
+  {
+    "id": "tc_11_british_vs_american",
+    "focus": "Regional variations (Ensure your binary handles or standardizes these)",
+    "text": "The colour of the aluminium casing is quite striking. We need to analyse the behaviour of the system."
+  },
+  {
+    "id": "tc_12_pluralization_errors",
+    "focus": "Incorrectly formed plurals",
+    "text": "There were many leafs on the ground. The childs played near the bushes, watching the mouses run."
+  },
+  {
+    "id": "tc_13_prefix_suffix_anomalies",
+    "focus": "Bad hyphens and word combinations",
+    "text": "The pre-requisite for this class is an introductory module. We need to co operate to get this un-done."
+  },
+  {
+    "id": "tc_14_camelcase_split",
+    "focus": "Programming terms in normal text",
+    "text": "The userDatabase was updated successfully. Please verify the accessToken before proceeding with the gitCommit."
+  },
+  {
+    "id": "tc_15_all_caps_errors",
+    "focus": "Typos hidden within acronyms or shouting text",
+    "text": "PLEASE SUBMT THE REORT BY EOD. THE CEO IS WAITING FOR THE QURTERLY EARNNGS."
+  },
+  {
+    "id": "tc_16_punctuation_inside_words",
+    "focus": "Accidental punctuation strikes",
+    "text": "The devel.oper pushed the code to the main branch. It caused a mas,sive outage in pro/duction."
+  },
+  {
+    "id": "tc_17_apostrophe_misuse",
+    "focus": "Rogue and missing apostrophes",
+    "text": "The student's left they're backpacks in the hall. Im going to tell them that its against the rules."
+  },
+  {
+    "id": "tc_18_silent_letters",
+    "focus": "Omission of tricky silent letters",
+    "text": "The morgage rate dropped significantly. We walked through the autum leaves listening to the sychiatrist."
+  },
+  {
+    "id": "tc_19_triple_letters",
+    "focus": "Accidental triple keystrokes",
+    "text": "The flllight was delayed by three hours. It was a verryy frustrating experience for all the passssengers."
+  },
+  {
+    "id": "tc_20_combo_breaker",
+    "focus": "Multiple error types in a single sentence",
+    "text": "unfortunatly, the commitee didnot reallize that teh buisness was in serous finanical truble untill it was to late."
+  },
+  {
+    "id": "tc_21_contractions",
+    "focus": "Messed up contractions",
+    "text": "I couldnt beleive it when they said they wouldnt be attending. Shoudl'nt we call them to check?"
+  },
+  {
+    "id": "tc_22_urls_and_emails",
+    "focus": "Ignoring valid URLs and emails (Should not spell-check)",
+    "text": "Please reach out to admin@company.com or visit https://www.examplle.com/docs for more info."
+  },
+  {
+    "id": "tc_23_unicode_chars",
+    "focus": "Non-ASCII characters and accents",
+    "text": "We visited the café near the plaza. The jalapeño poppers were greate, but the piñata broke early."
+  },
+  {
+    "id": "tc_24_leading_punctuation",
+    "focus": "Punctuation attached to the start of a word",
+    "text": "\"Absolutly not!\" she screamed. (He hadnt anticipated this reaction.)"
+  },
+  {
+    "id": "tc_25_trailing_punctuation",
+    "focus": "Multiple punctuation marks at the end of a word",
+    "text": "Did you really mean to delete the entire databse?!... That is going to be a huge probelm..."
+  },
+  {
+    "id": "tc_26_mixed_casing_acronyms",
+    "focus": "Acronyms attached to normal words",
+    "text": "The JSONpayload was invalid. We need to check the APIresponse to figure out what went wrong."
+  },
+  {
+    "id": "tc_27_ordinals",
+    "focus": "Number suffixes",
+    "text": "He finished in 1st place, but the 2nd and 3rd place runners were closing the gap quikly."
+  },
+  {
+    "id": "tc_28_currency_symbols",
+    "focus": "Symbols attached to amounts",
+    "text": "The total cost was £500.50 for the equiptment, plus an extra $20 for shiping."
+  },
+  {
+    "id": "tc_29_measurements",
+    "focus": "Units of measurement without spaces",
+    "text": "The board measures exactly 15cm by 20mm. It weighs 5kg, which is heavier than expcted."
+  },
+  {
+    "id": "tc_30_stuttering",
+    "focus": "Repeated letters for emphasis",
+    "text": "That was soooooooo coool! But I am veryyy tired now."
+  },
+  {
+    "id": "tc_31_proper_nouns",
+    "focus": "Names that shouldn't be altered (Requires dictionary support)",
+    "text": "Did you see Hermione at the conference in Edinburgh? I heard Gandalf is speaking next."
+  },
+  {
+    "id": "tc_32_run_on_words",
+    "focus": "Missing spacebars creating giant words",
+    "text": "We needtothinkabout theconsequences ofthisaction before weproceed further."
+  },
+  {
+    "id": "tc_33_emdash_word_split",
+    "focus": "Words connected by em-dashes",
+    "text": "The strategy—although risky—seemed to be our best opton. We proceeded—cautiously."
+  },
+  {
+    "id": "tc_34_file_paths",
+    "focus": "Ignoring filesystem paths",
+    "text": "The configuration file is located at /etc/nginx/nginx.conf or C:\\Windows\\System32\\drivers."
+  },
+  {
+    "id": "tc_35_zalgo_text",
+    "focus": "Extreme text corruption/Zalgo (Stress test)",
+    "text": "T̸h̷e̷ ̷v̵o̵i̵d̶ ̸s̸t̷a̶r̴e̸s̶ ̶b̸a̶c̷k̵. I hopë the parsêr doésn't cråsh."
+  },
+  {
+    "id": "tc_36_smart_quotes",
+    "focus": "Typographical/Smart quotes vs Straight quotes",
+    "text": "“I couldn’t believe it,” she said. The ‘smart’ quotes often brek simple parsers."
+  },
+  {
+    "id": "tc_37_initials_and_titles",
+    "focus": "Names with periods",
+    "text": "Dr. J.R.R. Tolkien and Mr. H.G. Wells were both prominent authors. The U.K. is their home."
+  },
+  {
+    "id": "tc_38_markdown_formatting",
+    "focus": "Ignoring markdown asterisks and underscores",
+    "text": "This is **veery** important. We need to look at the _underlyng_ data structures."
+  },
+  {
+    "id": "tc_39_html_tags",
+    "focus": "Text with embedded HTML tags (Testing your skipzones)",
+    "text": "The <a href=\"https://bbc.co.uk\">linnk</a> was broken. <p>This pargraph is fine.</p>"
+  },
+  {
+    "id": "tc_40_possessives",
+    "focus": "Singular and plural possessives",
+    "text": "James's car was parked outside. The teachers' lounge was empty during the breakk."
+  },
+  {
+    "id": "tc_41_hyphenated_compounds",
+    "focus": "Multi-word hyphenated phrases",
+    "text": "The state-of-the-art system was custom-built for the mother-in-law of the CEO."
+  },
+  {
+    "id": "tc_42_numbers_with_letters",
+    "focus": "Decades and ordinals without spaces",
+    "text": "Back in the 1990s, the 50th anniversary was a big deal. They loved 80s musc."
+  },
+  {
+    "id": "tc_43_time_formats",
+    "focus": "Times separated by colons or dots",
+    "text": "The meeting is at 14:30 GMT. We will reconvene at 09.45 tomorrow mroning."
+  },
+  {
+    "id": "tc_44_fractional_numbers",
+    "focus": "Decimals and fractions",
+    "text": "The margin of errror was 0.05 percent. That is roughly 1/20th of the total."
+  },
+  {
+    "id": "tc_45_slashes",
+    "focus": "Words separated by forward or backward slashes",
+    "text": "Please provide your input/output logs. The pass/fail ratio is concerningly low."
+  },
+  {
+    "id": "tc_46_abbreviations",
+    "focus": "Common journalistic abbreviations",
+    "text": "E.g., this is an example. I.e., it means we need to fix it ASAP. Approx. 50 peopel attended."
+  },
+  {
+    "id": "tc_47_twitter_handles_hashtags",
+    "focus": "Social media syntax",
+    "text": "Follow @BBCNews for updates. The hashtag #BreeakingNews was trending globally."
+  },
+  {
+    "id": "tc_48_repeated_punctuation",
+    "focus": "Ellipses and dramatic punctuation",
+    "text": "Wait a minute... did you see that?!?!? It was abslutely wild!!!"
+  },
+  {
+    "id": "tc_49_emojis",
+    "focus": "Text containing emojis",
+    "text": "The update deployed successfully 🚀. Great job everyone 👍. Let's get some cofffee ☕."
+  },
+  {
+    "id": "tc_50_bbc_context",
+    "focus": "Specific context likely to be found in your articles",
+    "text": "The Match of the Day presnter spoke about the Premier League standings. The Chancellor announced the budget."
+  }
+]

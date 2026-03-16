@@ -1,0 +1,21 @@
+profile_id: bbc-news
+description: "BBC News editorial content"
+terms:
+  # Politicians and public figures
+  - Starmer
+  - Sunak
+  - Rayner
+  - Reeves
+  - Badenoch
+
+  # Organisations
+  - Ofcom
+  - Ofsted
+  - Ofgem
+  - HMRC
+
+  # BBC-specific
+  - iPlayer
+  - Newsnight
+  - Panorama
+  - CBeebies

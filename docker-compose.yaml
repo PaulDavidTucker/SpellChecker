@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  spellchecker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DICT_PATH=/dictionaries/en_gb.txt
+      - BASE_ALLOWLIST_PATH=/config/base-allowlist.yaml
+      - PROFILES_DIR=/config/profiles
+      - LISTEN_ADDR=:8080
+      - HEALTH_CHECK_URL=http://localhost:8080/health
+    restart: unless-stopped

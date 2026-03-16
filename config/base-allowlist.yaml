@@ -1,0 +1,19 @@
+terms:
+  # Technology
+  - Kubernetes
+  - Docker
+  - gRPC
+  - PostgreSQL
+  - Redis
+  - nginx
+
+  # Common proper nouns
+  - Google
+  - Microsoft
+  - Amazon
+  - GitHub
+
+  # UK-specific
+  - Brexit
+  - Downing Street
+  - Westminster
