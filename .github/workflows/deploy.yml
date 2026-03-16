@@ -2,9 +2,9 @@ name: Deploy to GitHub Pages (WASM)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
@@ -24,58 +24,57 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-          
+          go-version: "1.23"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: webapp/package-lock.json
-          
+
       - name: Copy WASM exec helper
         run: |
           # Copy Go's WASM runtime helper
           cp $(go env GOROOT)/misc/wasm/wasm_exec.js webapp/public/
-          
+
       - name: Build Go WASM binary
         run: |
           echo "Building WASM spell checker..."
           GOOS=js GOARCH=wasm go build -o webapp/public/spellchecker.wasm ./cmd/wasm
           ls -lh webapp/public/spellchecker.wasm
-          
+
       - name: Install Node dependencies
         working-directory: ./webapp
         run: npm ci
-          
+
       - name: Build webapp for production
         working-directory: ./webapp
         run: npm run build
         env:
           # Use WASM mode for GitHub Pages (no backend needed)
           VITE_SPELLCHECKER_MODE: wasm
-          # Set base path for GitHub Pages (update with your repo name)
-          # VITE_BASE_PATH: /SpellChecker/
-          
+          VITE_BASE_PATH: /SpellChecker/
+
       - name: Copy WASM files to dist
         run: |
           cp webapp/public/spellchecker.wasm webapp/dist/
           cp webapp/public/wasm_exec.js webapp/dist/
           echo "WASM files in dist:"
           ls -la webapp/dist/
-          
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './webapp/dist'
-          
+          path: "./webapp/dist"
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
