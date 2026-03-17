@@ -1,8 +1,9 @@
 import { useAppStore } from '../../stores/appStore';
 import { useSpellCheck, IS_WASM_MODE } from '../../hooks/useSpellCheck';
+import { useServerReady } from '../../hooks/useServerReady';
 import { ProfileManager } from '../ProfileManager/ProfileManager';
 import { Button } from '../ui';
-import { Settings, Undo2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Settings, Undo2, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 
 // Tooltip message for disabled features in WASM mode
 const WASM_DISABLED_MESSAGE = 'Disabled in headless mode';
@@ -18,6 +19,7 @@ export function Header() {
   } = useAppStore();
 
   const { mode, wasmLoading, wasmError, retryWASM } = useSpellCheck();
+  const { status } = useServerReady();
   const isWasmMode = mode === 'wasm' || IS_WASM_MODE;
 
   const handleUndo = () => {
@@ -39,6 +41,14 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Server loading indicator for API mode */}
+          {!isWasmMode && !status.ready && (
+            <span className="text-xs text-blue-500 flex items-center gap-1 animate-pulse">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Loading dictionary...
+            </span>
+          )}
+
           {/* Profile Selector - Shows ProfileManager in API mode, disabled dropdown in WASM mode */}
           {isWasmMode ? (
             // WASM Mode: Simple dropdown with just default, disabled

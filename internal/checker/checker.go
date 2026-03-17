@@ -39,6 +39,18 @@ func NewChecker(
 func (c *Checker) Check(req CheckRequest) CheckResult {
 	start := time.Now()
 
+	// If no SymSpell index (during startup), return empty results
+	if c.ss == nil {
+		return CheckResult{
+			Misspellings:         []Misspelling{},
+			RepeatedWords:        []RepeatedWord{},
+			CapitalisationIssues: []CapitalisationIssue{},
+			TokenCount:           0,
+			CheckedCount:         0,
+			ElapsedMs:            0,
+		}
+	}
+
 	// Build a fast lookup set for request-level ignore terms
 	ignoreSet := make(map[string]struct{}, len(req.IgnoreTerms))
 	for _, term := range req.IgnoreTerms {

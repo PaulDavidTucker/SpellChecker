@@ -86,6 +86,11 @@ export function useSpellCheck() {
         });
 
         if (!response.ok) {
+          // Handle 503 Service Unavailable (dictionary loading)
+          if (response.status === 503) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Dictionary still loading, please wait...');
+          }
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || `HTTP ${response.status}`);
         }
@@ -143,6 +148,11 @@ export function useProfiles() {
       const response = await fetch(`${API_BASE}/profiles`);
 
       if (!response.ok) {
+        // Handle 503 Service Unavailable (dictionary loading)
+        if (response.status === 503) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Dictionary still loading...');
+        }
         throw new Error(`HTTP ${response.status}`);
       }
 

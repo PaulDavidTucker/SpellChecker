@@ -1,8 +1,14 @@
-import { MainLayout } from './components/Layout/MainLayout';
-import './index.css';
+import { MainLayout } from "./components/Layout/MainLayout";
+import { LoadingOverlay } from "./components/LoadingOverlay/LoadingOverlay";
+import "./index.css";
 
 function App() {
-  return <MainLayout />;
+  return (
+    <>
+      {/*<LoadingOverlay />*/}
+      <MainLayout />
+    </>
+  );
 }
 
 export default App;
