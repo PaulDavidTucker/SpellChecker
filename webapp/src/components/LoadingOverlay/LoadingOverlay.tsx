@@ -1,5 +1,5 @@
 import { useServerReady } from "../../hooks/useServerReady";
-import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 export function LoadingOverlay() {
   const { status, isChecking } = useServerReady();
