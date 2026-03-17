@@ -3,12 +3,12 @@ package checker
 import (
 	"fmt"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/PaulDavidTucker/SpellChecker/internal/allowlist"
 
 	symspell "github.com/snapp-incubator/go-symspell"
-	"github.com/snapp-incubator/go-symspell/pkg/options"
 )
 
 const (
@@ -27,6 +27,7 @@ type Pool struct {
 
 	dictPath string
 	store    *allowlist.Store
+	cache    *BinaryCache
 }
 
 // NewPool builds a Checker for each profile in the store, plus
@@ -35,10 +36,17 @@ func NewPool(
 	dictPath string,
 	store *allowlist.Store,
 ) (*Pool, error) {
+	// Initialize cache
+	cacheDir := os.Getenv("CACHE_DIR")
+	if cacheDir == "" {
+		cacheDir = "/tmp/spellcheck-cache"
+	}
+
 	p := &Pool{
 		checkers: make(map[string]*Checker),
 		dictPath: dictPath,
 		store:    store,
+		cache:    NewBinaryCache(cacheDir),
 	}
 
 	if err := p.build(); err != nil {
@@ -134,34 +142,10 @@ func (p *Pool) rebuild() error {
 
 // buildIndex creates a SymSpell instance loaded with the base
 // dictionary and optional extra terms (from allowlists).
+// Uses cache if available to speed up loading.
 func (p *Pool) buildIndex(
 	extraTerms []string,
 ) (symspell.SymSpell, error) {
-
-	ss := symspell.NewSymSpell(
-		options.WithCountThreshold(1),
-		options.WithMaxDictionaryEditDistance(maxEditDistance),
-		options.WithPrefixLength(prefixLength),
-	)
-
-	// Load the main dictionary file
-	// Column 0 = word, Column 1 = frequency
-	ok, err := ss.LoadDictionary(p.dictPath, 0, 1, " ")
-	if err != nil {
-		return nil, fmt.Errorf(
-			"loading dictionary %s: %w", p.dictPath, err,
-		)
-	}
-	if !ok {
-		return nil, fmt.Errorf(
-			"failed to load dictionary %s", p.dictPath,
-		)
-	}
-
-	// Note: This library version doesn't support adding individual
-	// dictionary entries at runtime. Allowlist terms are checked
-	// separately in the Checker.Check method.
-	_ = extraTerms
-
-	return ss, nil
+	// Use cache to build index
+	return p.cache.BuildIndex(p.dictPath)
 }

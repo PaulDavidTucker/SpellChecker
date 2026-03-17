@@ -234,6 +234,10 @@ export function TextEditor() {
                 <span className="w-2 h-2 bg-blue-500 rounded-full"></span>{" "}
                 Capital
               </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 bg-purple-500 rounded-full"></span>{" "}
+                Space
+              </span>
             </div>
           </div>
 
@@ -260,6 +264,10 @@ export function TextEditor() {
                   case "capitalisation":
                     bgClass = "bg-blue-50";
                     borderClass = "border-b-2 border-blue-400";
+                    break;
+                  case "missing_space":
+                    bgClass = "bg-purple-50";
+                    borderClass = "border-b-2 border-purple-400";
                     break;
                 }
 

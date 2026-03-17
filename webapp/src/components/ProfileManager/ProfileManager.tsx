@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
-import { useProfiles, useSpellCheck } from '../../hooks/useSpellCheck';
+import { useProfiles, useSpellCheck, IS_WASM_MODE } from '../../hooks/useSpellCheck';
 import { Button, Input, Card } from '../ui';
 import { Plus, Trash2, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Profile } from '../../types/api';
+
+// Tooltip message for disabled features in WASM mode
+const WASM_DISABLED_MESSAGE = 'Disabled in headless mode';
 
 export function ProfileManager() {
   const {
@@ -16,6 +19,7 @@ export function ProfileManager() {
   } = useAppStore();
 
   const { mode } = useSpellCheck();
+  const isWasmMode = mode === 'wasm' || IS_WASM_MODE;
 
   const {
     fetchProfiles,
@@ -33,17 +37,18 @@ export function ProfileManager() {
 
   // Load profiles on mount (only in API mode)
   useEffect(() => {
-    if (mode === 'wasm') return; // Skip API calls in WASM mode
+    if (isWasmMode) return; // Skip API calls in WASM mode
     
     const loadProfiles = async () => {
       const loaded = await fetchProfiles();
       setProfiles(loaded);
     };
     loadProfiles();
-  }, [fetchProfiles, setProfiles, mode]);
+  }, [fetchProfiles, setProfiles, isWasmMode]);
 
   const handleCreateProfile = useCallback(async () => {
     if (!newProfileId.trim()) return;
+    if (isWasmMode) return; // Should not reach here due to disabled button, but safety check
 
     const profile: Profile = {
       id: newProfileId.trim(),
@@ -56,9 +61,11 @@ export function ProfileManager() {
       setNewProfileId('');
       setCurrentProfileId(profile.id);
     }
-  }, [newProfileId, profiles, createProfile, setProfiles, setCurrentProfileId]);
+  }, [newProfileId, profiles, createProfile, setProfiles, setCurrentProfileId, isWasmMode]);
 
   const handleDeleteProfile = useCallback(async (profileId: string) => {
+    if (isWasmMode) return; // Should not reach here due to disabled button, but safety check
+
     const success = await deleteProfile(profileId);
     if (success) {
       setProfiles(profiles.filter(p => p.id !== profileId));
@@ -66,10 +73,11 @@ export function ProfileManager() {
         setCurrentProfileId('default');
       }
     }
-  }, [profiles, currentProfileId, deleteProfile, setProfiles, setCurrentProfileId]);
+  }, [profiles, currentProfileId, deleteProfile, setProfiles, setCurrentProfileId, isWasmMode]);
 
   const handleAddTerm = useCallback(async (profileId: string) => {
     if (!newTerm.trim()) return;
+    if (isWasmMode) return; // Should not reach here due to disabled button, but safety check
 
     const success = await addTermToProfile(profileId, newTerm.trim());
     if (success) {
@@ -80,9 +88,11 @@ export function ProfileManager() {
       ));
       setNewTerm('');
     }
-  }, [newTerm, profiles, addTermToProfile, setProfiles]);
+  }, [newTerm, profiles, addTermToProfile, setProfiles, isWasmMode]);
 
   const handleRemoveTerm = useCallback(async (profileId: string, term: string) => {
+    if (isWasmMode) return; // Should not reach here due to disabled button, but safety check
+
     const success = await removeTermFromProfile(profileId, term);
     if (success) {
       setProfiles(profiles.map(p => 
@@ -91,7 +101,7 @@ export function ProfileManager() {
           : p
       ));
     }
-  }, [profiles, removeTermFromProfile, setProfiles]);
+  }, [profiles, removeTermFromProfile, setProfiles, isWasmMode]);
 
   if (!isProfileModalOpen) {
     return (
@@ -99,23 +109,36 @@ export function ProfileManager() {
         <select
           value={currentProfileId}
           onChange={(e) => setCurrentProfileId(e.target.value)}
-          className="block w-48 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+          disabled={isWasmMode}
+          className="block w-48 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+          title={isWasmMode ? WASM_DISABLED_MESSAGE : undefined}
         >
-          {profiles.map((profile) => (
-            <option key={profile.id} value={profile.id}>
-              {profile.id}
-            </option>
-          ))}
+          {isWasmMode ? (
+            <option value="default">default</option>
+          ) : (
+            profiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>
+                {profile.id}
+              </option>
+            ))
+          )}
         </select>
         <Button 
           variant="ghost" 
           size="sm"
-          onClick={() => setIsProfileModalOpen(true)}
+          onClick={() => !isWasmMode && setIsProfileModalOpen(true)}
+          disabled={isWasmMode}
+          title={isWasmMode ? WASM_DISABLED_MESSAGE : "Manage profiles"}
         >
           <Plus className="w-4 h-4" />
         </Button>
       </div>
     );
+  }
+
+  // Don't render modal in WASM mode (button is disabled, so this shouldn't happen)
+  if (isWasmMode) {
+    return null;
   }
 
   return (
@@ -141,10 +164,12 @@ export function ProfileManager() {
                 onChange={setNewProfileId}
                 placeholder="Profile ID (e.g., my-custom-profile)"
                 className="flex-1"
+                disabled={isWasmMode}
               />
               <Button
                 onClick={handleCreateProfile}
-                disabled={isLoading || !newProfileId.trim()}
+                disabled={isLoading || !newProfileId.trim() || isWasmMode}
+                title={isWasmMode ? WASM_DISABLED_MESSAGE : "Create new profile"}
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Create
@@ -168,6 +193,8 @@ export function ProfileManager() {
                           expandedProfile === profile.id ? null : profile.id
                         )}
                         className="text-gray-500 hover:text-gray-700 p-1"
+                        disabled={isWasmMode}
+                        title={isWasmMode ? WASM_DISABLED_MESSAGE : undefined}
                       >
                         {expandedProfile === profile.id ? (
                           <ChevronUp className="w-4 h-4" />
@@ -200,7 +227,8 @@ export function ProfileManager() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteProfile(profile.id)}
-                          disabled={isLoading}
+                          disabled={isLoading || isWasmMode}
+                          title={isWasmMode ? WASM_DISABLED_MESSAGE : "Delete profile"}
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </Button>
@@ -220,11 +248,13 @@ export function ProfileManager() {
                           }}
                           placeholder="Add a term..."
                           className="flex-1"
+                          disabled={isWasmMode}
                         />
                         <Button
                           size="sm"
                           onClick={() => handleAddTerm(profile.id)}
-                          disabled={isLoading || !newTerm.trim()}
+                          disabled={isLoading || !newTerm.trim() || isWasmMode}
+                          title={isWasmMode ? WASM_DISABLED_MESSAGE : "Add term to profile"}
                         >
                           <Plus className="w-4 h-4" />
                         </Button>
@@ -239,7 +269,9 @@ export function ProfileManager() {
                             {term}
                             <button
                               onClick={() => handleRemoveTerm(profile.id, term)}
-                              className="ml-1 text-gray-500 hover:text-red-500"
+                              disabled={isWasmMode}
+                              className="ml-1 text-gray-500 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={isWasmMode ? WASM_DISABLED_MESSAGE : "Remove term"}
                             >
                               <X className="w-3 h-3" />
                             </button>

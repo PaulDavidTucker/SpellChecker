@@ -42,7 +42,6 @@ dev-setup: copy-wasm-exec
 
 # Run development server with API backend
 dev:
-	docker-compose up -d
-	cd webapp && npm run dev
+	docker compose up -d
 
 .PHONY: build-wasm build-webapp copy-wasm-exec clean deploy-github dev-setup dev

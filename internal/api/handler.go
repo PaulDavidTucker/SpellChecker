@@ -189,10 +189,11 @@ func (h *Handler) handleCheck(
 
 	for _, ci := range result.CapitalisationIssues {
 		resp.CapitalisationIssues = append(resp.CapitalisationIssues, CapitalisationIssueResponse{
-			Word:   ci.Word,
-			Offset: ci.Offset,
-			Line:   ci.Line,
-			Column: ci.Column,
+			Word:       ci.Word,
+			Offset:     ci.Offset,
+			Line:       ci.Line,
+			Column:     ci.Column,
+			Suggestion: ci.Suggestion,
 		})
 	}
 

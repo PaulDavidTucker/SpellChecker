@@ -11,6 +11,7 @@ export interface Misspelling {
   line: number;
   column: number;
   suggestions: Suggestion[];
+  type?: string; // Can be 'misspelling' or 'missing_space'
 }
 
 export interface RepeatedWord {
@@ -25,6 +26,7 @@ export interface CapitalisationIssue {
   offset: number;
   line: number;
   column: number;
+  suggestions?: string[];
 }
 
 export interface SpellCheckResponse {
@@ -52,7 +54,7 @@ export interface Profile {
 
 // Frontend-specific types
 
-export type IssueType = 'misspelling' | 'repeated' | 'capitalisation';
+export type IssueType = 'misspelling' | 'repeated' | 'capitalisation' | 'missing_space';
 
 export interface Issue {
   id: string;
@@ -65,7 +67,7 @@ export interface Issue {
 }
 
 export interface TextSegment {
-  type: 'normal' | 'misspelling' | 'repeated' | 'capitalisation';
+  type: 'normal' | 'misspelling' | 'repeated' | 'capitalisation' | 'missing_space';
   text: string;
   issue?: Issue;
 }

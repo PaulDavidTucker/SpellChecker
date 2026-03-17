@@ -6,6 +6,20 @@ import type {
   UndoEntry 
 } from '../types/api';
 
+/**
+ * Normalize spell check response to ensure all arrays are present
+ * Go WASM returns nil slices as null in JSON, but TypeScript expects arrays
+ */
+function normalizeCheckResult(result: SpellCheckResponse | null): SpellCheckResponse | null {
+  if (!result) return null;
+  return {
+    ...result,
+    misspellings: result.misspellings || [],
+    repeated_words: result.repeated_words || [],
+    capitalisation_issues: result.capitalisation_issues || [],
+  };
+}
+
 interface AppState {
   // Editor state
   text: string;
@@ -78,7 +92,7 @@ export const useAppStore = create<AppState>()(
       
       // Actions
       setText: (text) => set({ text }),
-      setCheckResult: (result) => set({ checkResult: result }),
+      setCheckResult: (result) => set({ checkResult: normalizeCheckResult(result) }),
       setIsChecking: (isChecking) => set({ isChecking }),
       
       setProfiles: (profiles) => set({ profiles }),

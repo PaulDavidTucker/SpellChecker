@@ -3,11 +3,20 @@ import type { Issue, TextSegment, SpellCheckResponse } from '../types/api';
 export function convertResponseToIssues(response: SpellCheckResponse): Issue[] {
   const issues: Issue[] = [];
 
-  // Convert misspellings
-  response.misspellings.forEach((m, index) => {
+  // Handle null/undefined response
+  if (!response) {
+    return issues;
+  }
+
+  // Convert misspellings (handle null/undefined)
+  const misspellings = response.misspellings || [];
+  misspellings.forEach((m, index) => {
+    // Determine type - check if this is a missing space issue
+    const type = m.type === 'missing_space' ? 'missing_space' : 'misspelling';
+    
     issues.push({
       id: `misspelling-${index}`,
-      type: 'misspelling',
+      type,
       word: m.word,
       offset: m.offset,
       line: m.line,
@@ -16,8 +25,9 @@ export function convertResponseToIssues(response: SpellCheckResponse): Issue[] {
     });
   });
 
-  // Convert repeated words
-  response.repeated_words.forEach((r, index) => {
+  // Convert repeated words (handle null/undefined)
+  const repeatedWords = response.repeated_words || [];
+  repeatedWords.forEach((r, index) => {
     issues.push({
       id: `repeated-${index}`,
       type: 'repeated',
@@ -28,8 +38,9 @@ export function convertResponseToIssues(response: SpellCheckResponse): Issue[] {
     });
   });
 
-  // Convert capitalisation issues
-  response.capitalisation_issues.forEach((c, index) => {
+  // Convert capitalisation issues (handle null/undefined)
+  const capitalisationIssues = response.capitalisation_issues || [];
+  capitalisationIssues.forEach((c, index) => {
     issues.push({
       id: `capitalisation-${index}`,
       type: 'capitalisation',
@@ -37,6 +48,7 @@ export function convertResponseToIssues(response: SpellCheckResponse): Issue[] {
       offset: c.offset,
       line: c.line,
       column: c.column,
+      suggestions: c.suggestions || [],
     });
   });
 

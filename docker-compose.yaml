@@ -3,17 +3,20 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Dictionary size: medium (96K words), large (136K words), or huge (408K words)
+        DICT_SIZE: ${DICT_SIZE:-medium}
     ports:
       - "8080:8080"
     environment:
-      - DICT_PATH=/dictionaries/en_gb.txt
+      # Note: DICT_PATH is set in Dockerfile based on DICT_SIZE build arg
       - BASE_ALLOWLIST_PATH=/config/base-allowlist.yaml
       - PROFILES_DIR=/config/profiles
       - LISTEN_ADDR=:8080
       - HEALTH_CHECK_URL=http://localhost:8080/health
     volumes:
       - ./config:/config
-      - ./dictionaries:/dictionaries
+      # Don't mount dictionaries - use the one baked into image
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/spellcheck", "-health-check"]
@@ -30,6 +33,7 @@ services:
       - "3000:3000"
     environment:
       - VITE_API_URL=http://localhost:8080
+      - VITE_SPELLCHECKER_MODE=api
     depends_on:
       - spellchecker
     volumes:

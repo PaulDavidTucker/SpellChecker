@@ -40,6 +40,12 @@ export interface SpellCheckerState {
   version: string | null;
 }
 
+interface LoadAttempt {
+  attempt: number;
+  maxAttempts: number;
+  delayMs: number;
+}
+
 class SpellCheckerWASM {
   private state: SpellCheckerState = {
     isReady: false,
@@ -50,15 +56,69 @@ class SpellCheckerWASM {
   private loadPromise: Promise<void> | null = null;
 
   /**
-   * Initialize the WASM spell checker
+   * Get the correct WASM path based on current location
+   * This handles GitHub Pages base paths correctly
    */
-  async initialize(wasmPath: string = './spellchecker.wasm'): Promise<void> {
+  private getWasmPath(providedPath?: string): string {
+    if (providedPath) {
+      return providedPath;
+    }
+
+    // Get the base URL from Vite's env (e.g., "/SpellChecker/" on GitHub Pages)
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    
+    // Construct the full path
+    // Remove trailing slash from base, add leading slash to path if needed
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    const wasmPath = 'spellchecker.wasm';
+    
+    return cleanBase ? `${cleanBase}/${wasmPath}` : `/${wasmPath}`;
+  }
+
+  /**
+   * Initialize the WASM spell checker with retry logic
+   */
+  async initialize(wasmPath?: string, maxRetries: number = 3): Promise<void> {
     if (this.loadPromise) {
       return this.loadPromise;
     }
 
-    this.loadPromise = this.loadWasm(wasmPath);
+    const resolvedPath = this.getWasmPath(wasmPath);
+    this.loadPromise = this.loadWasmWithRetry(resolvedPath, maxRetries);
     return this.loadPromise;
+  }
+
+  private async loadWasmWithRetry(wasmPath: string, maxRetries: number): Promise<void> {
+    const loadConfig: LoadAttempt = {
+      attempt: 1,
+      maxAttempts: maxRetries,
+      delayMs: 1000,
+    };
+
+    while (loadConfig.attempt <= loadConfig.maxAttempts) {
+      try {
+        await this.loadWasm(wasmPath);
+        return; // Success - exit retry loop
+      } catch (error) {
+        console.warn(`WASM load attempt ${loadConfig.attempt}/${loadConfig.maxAttempts} failed:`, error);
+        
+        if (loadConfig.attempt >= loadConfig.maxAttempts) {
+          throw new Error(
+            `Failed to load WASM after ${loadConfig.maxAttempts} attempts. ` +
+            `Last error: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+
+        // Wait before retry with exponential backoff
+        await this.delay(loadConfig.delayMs);
+        loadConfig.delayMs *= 2; // Exponential backoff
+        loadConfig.attempt++;
+      }
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   private async loadWasm(wasmPath: string): Promise<void> {
@@ -66,28 +126,40 @@ class SpellCheckerWASM {
     this.state.error = null;
 
     try {
+      // Check if Go runtime is available
+      if (typeof (window as any).Go !== 'function') {
+        throw new Error('Go WASM runtime (wasm_exec.js) not loaded. Ensure the script is in index.html before main.js.');
+      }
+
       // Load the Go WASM runtime
       const go = new (window as any).Go();
 
       // Fetch and instantiate the WASM module
+      console.log(`Fetching WASM from: ${wasmPath}`);
       const response = await fetch(wasmPath);
       if (!response.ok) {
-        throw new Error(`Failed to load WASM: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to load WASM from ${wasmPath}: ${response.status} ${response.statusText}`);
       }
 
       const wasmBytes = await response.arrayBuffer();
+      
+      // Check WebAssembly support
+      if (!WebAssembly.validate(wasmBytes)) {
+        throw new Error('WASM binary validation failed - possibly corrupted file');
+      }
+
       const result = await WebAssembly.instantiate(wasmBytes, go.importObject);
 
-      // Run the Go program
+      // Run the Go program (this starts a goroutine that runs the main function)
       go.run(result.instance);
 
       // Wait for initialization
-      await this.waitForReady();
+      await this.waitForReady(30000); // 30 second timeout for slower connections
 
       this.state.isReady = true;
       this.state.version = (window as any).spellchecker?.version || 'unknown';
       
-      console.log('WASM SpellChecker initialized:', this.state.version);
+      console.log('WASM SpellChecker initialized successfully:', this.state.version);
     } catch (error) {
       this.state.error = error instanceof Error ? error.message : 'Unknown error';
       this.state.isReady = false;
@@ -111,7 +183,7 @@ class SpellCheckerWASM {
         }
 
         if (Date.now() - startTime > timeoutMs) {
-          reject(new Error('WASM initialization timeout'));
+          reject(new Error(`WASM initialization timeout after ${timeoutMs}ms`));
           return;
         }
 
@@ -132,7 +204,7 @@ class SpellCheckerWASM {
 
     const spellchecker = (window as any).spellchecker;
     if (!spellchecker?.checkText) {
-      throw new Error('SpellChecker API not available');
+      throw new Error('SpellChecker API not available - wasm_exec.js may not be loaded');
     }
 
     const result = spellchecker.checkText(text, profileId);
